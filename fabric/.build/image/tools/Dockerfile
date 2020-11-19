@@ -1,0 +1,22 @@
+# Copyright Greg Haskins All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+FROM hyperledger/fabric-baseimage:arm64-0.4.21 as builder
+WORKDIR /opt/gopath
+RUN mkdir src && mkdir pkg && mkdir bin
+ADD . src/github.com/hyperledger/fabric
+WORKDIR /opt/gopath/src/github.com/hyperledger/fabric
+ENV EXECUTABLES go git curl
+RUN go env -w GO111MODULE=on && go env -w GOPROXY="goproxy.cn,direct"  && go mod download
+#RUN make configtxgen configtxlator cryptogen peer discover idemixgen
+RUN ls /opt/gopath/src/github.com/hyperledger/fabric/.build/bin -la
+
+FROM hyperledger/fabric-baseimage:arm64-0.4.21
+ENV FABRIC_CFG_PATH /etc/hyperledger/fabric
+RUN apt-get update && apt-get install -y jq
+VOLUME /etc/hyperledger/fabric
+COPY --from=builder /opt/gopath/src/github.com/hyperledger/fabric/.build/bin /usr/local/bin
+COPY --from=builder /opt/gopath/src/github.com/hyperledger/fabric/sampleconfig $FABRIC_CFG_PATH
+LABEL org.hyperledger.fabric.version=1.4.9 \
+      org.hyperledger.fabric.base.version=0.4.21
